@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rabbit Chat</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:'Inter',sans-serif;
+}
+
+/* ================= THEME ================= */
+:root{
+  --bg:#e8f5e9;
+  --panel:#c8e6c9;
+  --dark:#1b5e20;
+  --dark2:#0d3d0d;
+}
+
+/* ================= LAYOUT ================= */
+.shell{
+  display:flex;
+  height:100vh;
+  background:var(--bg);
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar{
+  width:260px;
+  background:var(--panel);
+  border-right:2px solid var(--dark);
+  display:flex;
+  flex-direction:column;
+}
+
+.logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:15px;
+  font-weight:600;
+  border-bottom:2px solid var(--dark);
+}
+
+.logo span{
+  font-size:20px;
+}
+
+.new-chat{
+  margin:10px;
+  padding:10px;
+  background:transparent;
+  border:2px solid var(--dark);
+  color:var(--dark);
+  cursor:pointer;
+  border-radius:8px;
+}
+
+.new-chat:hover{
+  background:#a5d6a7;
+}
+
+.section{
+  padding:10px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--dark);
+}
+
+.history{
+  flex:1;
+  overflow:auto;
+}
+
+.chat-item{
+  padding:10px;
+  cursor:pointer;
+  border-radius:8px;
+  margin:5px 10px;
+  background:rgba(255,255,255,0.3);
+}
+
+.chat-item:hover{
+  background:#a5d6a7;
+}
+
+.chat-item.active{
+  background:var(--dark);
+  color:#fff;
+}
+
+/* ================= MAIN ================= */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.topbar{
+  padding:15px;
+  border-bottom:2px solid var(--dark);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.model{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-weight:600;
+}
+
+.messages{
+  flex:1;
+  padding:20px;
+  overflow:auto;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+
+.msg{
+  max-width:60%;
+  padding:10px 14px;
+  border-radius:12px;
+}
+
+.user{
+  align-self:flex-end;
+  background:var(--dark);
+  color:white;
+}
+
+.bot{
+  align-self:flex-start;
+  background:#f1f8e9;
+  border:1px solid var(--dark);
+}
+
+/* ================= INPUT ================= */
+.input-area{
+  padding:10px;
+  border-top:2px solid var(--dark);
+  display:flex;
+  gap:10px;
+}
+
+input{
+  flex:1;
+  padding:10px;
+  border:2px solid var(--dark);
+  border-radius:8px;
+  outline:none;
+}
+
+button{
+  padding:10px 15px;
+  background:var(--dark);
+  color:white;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+button:hover{
+  background:var(--dark2);
+}
+</style>
+</head>
+
+<body>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+
+    <div class="logo">
+      <span>🐰</span>
+      Rabbit AI
+    </div>
+
+    <button class="new-chat" onclick="newChat()">+ New Chat</button>
+
+    <div class="section">Recent</div>
+
+    <div class="history" id="history"></div>
+
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="topbar">
+      <div class="model">🐰 Rabbit Assistant</div>
+    </div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+      <input id="input" placeholder="Ask something..." />
+      <button onclick="send()">Send</button>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+let conversationId = "user_" + Math.random().toString(36).substring(2,10);
+
+const messages = document.getElementById("messages");
+const historyBox = document.getElementById("history");
+const input = document.getElementById("input");
+
+/* ================= SEND MESSAGE ================= */
+async function send(){
+  const text = input.value.trim();
+  if(!text) return;
+
+  addMessage(text,"user");
+  input.value="";
+
+  const res = await fetch("/chat",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      message:text,
+      conversation_id:conversationId
+    })
+  });
+
+  const data = await res.json();
+  addMessage(data.response,"bot");
+
+  loadHistory();
+}
+
+/* ================= ADD MESSAGE ================= */
+function addMessage(text,type){
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.innerText = text;
+  messages.appendChild(div);
+  messages.scrollTop = messages.scrollHeight;
+}
+
+/* ================= LOAD HISTORY LIST ================= */
+async function loadHistory(){
+
+  const res = await fetch("/history");
+  const data = await res.json();
+
+  historyBox.innerHTML = "";
+
+  data.forEach(chat => {
+    const div = document.createElement("div");
+    div.className = "chat-item";
+    div.innerText = chat.conversation_id;
+
+    div.onclick = () => openChat(chat.conversation_id);
+
+    historyBox.appendChild(div);
+  });
+}
+
+/* ================= OPEN CHAT ================= */
+async function openChat(id){
+
+  conversationId = id;
+  messages.innerHTML = "";
+
+  const res = await fetch("/history/" + id);
+  const data = await res.json();
+
+  data.forEach(m => {
+    addMessage(m.content, m.role === "user" ? "user" : "bot");
+  });
+}
+
+/* ================= NEW CHAT ================= */
+async function newChat(){
+  conversationId = "user_" + Math.random().toString(36).substring(2,10);
+  messages.innerHTML = "";
+}
+
+/* ================= INIT ================= */
+loadHistory();
+
+</script>
+
+</body>
+</html>

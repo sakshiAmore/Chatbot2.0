@@ -1,0 +1,9 @@
+flask
+pymongo
+langchain
+langchain-core==1.2.5
+langchain-groq
+langchain-community
+sentence-transformers
+faiss-cpu
+pydantic-core
